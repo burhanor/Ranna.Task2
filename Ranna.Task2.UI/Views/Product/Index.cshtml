@@ -1,0 +1,251 @@
+﻿@model ProductModel
+<div class="d-flex justify-content-end gap-2">
+    <button class="btn btn-success" onclick="openUpsertModal('Add')">
+        <i class="bi bi-plus-circle me-1"></i>
+    </button>
+    <button class="btn btn-warning text-white" onclick="openUpsertModal('Update')">
+        <i class="bi bi-pencil-square me-1"></i>
+    </button>
+    <button class="btn btn-danger" onclick="deleteProduct()">
+        <i class="bi bi-trash me-1"></i>
+    </button>
+</div>
+<div>
+    @* Tablo Alanı  *@
+    <table id="productTable" class="table table-striped">
+        <thead>
+            <tr>
+                <th> </th>
+                <th>Resim</th>
+                <th>Kod</th>
+                <th>Ad</th>
+                <th>Fiyat</th>
+                <th>Açıklama</th>
+                <th>Oluşturulma Tarihi</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+
+
+@* Ürün Ekleme ve Güncelleme için Kullanılacak Olan Modal  *@
+
+<div class="modal fade" id="productUpsertModal" aria-hidden="true">
+    <div class="modal-dialog">
+
+        <form id="productForm" enctype="multipart/form-data" onsubmit=" return upsertProduct(event)">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productUpsertModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body">
+                    @Html.HiddenFor(m => m.Id, new { id = "productId" })
+                    <div class="">
+                        @Html.LabelFor(m => m.Kod, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Kod, new { @class = "form-control" })
+                        @Html.ValidationMessageFor(m => m.Kod, "", new { @class = "validation-message" })
+
+                    </div>
+
+                    <div class="">
+                        @Html.LabelFor(m => m.Ad, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Ad, new { @class = "form-control" })
+                        @Html.ValidationMessageFor(m => m.Ad, "", new { @class = "validation-message" })
+                    </div>
+
+                    <div class="">
+                        @Html.LabelFor(m => m.Fiyat, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Fiyat, new { @class = "form-control", step = "0.01" })
+                        @Html.ValidationMessageFor(m => m.Fiyat, "", new { @class = "validation-message" })
+                    </div>
+
+                    <div class="">
+                        @Html.LabelFor(m => m.Bilgi, new { @class = "form-label" })
+                        @Html.TextAreaFor(m => m.Bilgi, new { @class = "form-control" })
+                        @Html.ValidationMessageFor(m => m.Bilgi, "", new { @class = "validation-message" })
+
+                    </div>
+
+                    <div class="">
+                        @Html.LabelFor(m => m.Resim, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Resim, new { @class = "form-control", type = "file", accept = "image/*" })
+                        @Html.ValidationMessageFor(m => m.Resim, "", new { @class = "validation-message" })
+
+                    </div>
+                    <div id="imagePreviewDiv" class="d-flex justify-content-center align-items-center">
+                        <img id="imagePreview" src="/images/defaultProductImage.png" width="300" height="300" />
+                    </div>
+
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button id="saveButton" type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
+                </div>
+        </form>
+    </div>
+</div>
+
+
+
+<script src="~/js/product.js"></script>
+<script>
+
+
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        //datatable ayarlari
+        $('#productTable').DataTable({
+            serverSide: true,
+            processing: true,
+            ajax: {
+                url: '/Product/GetProducts',
+                type: 'POST'
+            },
+            columns: [
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function (data) {
+                        return `<div class="d-flex justify-content-center align-items-center" style="height:100%;"><input type="checkbox"
+                        data-id="${data.id}"
+                        data-ad="${data.ad}"
+                        data-kod="${data.kod}"
+                        data-fiyat="${data.fiyat}"
+                        class="datatable-check-box" /></div>`
+
+                    },
+                    className: 'text-center align-middle'
+                },
+                {
+                    data: 'resim',
+                    render: function (data) {
+                        if (!data) {
+                            return `<img src="/images/defaultProductImage.png" width="100" height="100" />`
+                        }
+                        else {
+                            return `<img src="${data}" width="100" height="100" />`;
+                        }
+
+                    },
+                    orderable: false,
+                    searchable: false,
+                    className: 'text-center align-middle'
+                },
+                {
+                    data: 'kod', className: 'align-middle',
+                    orderable: false },
+                {
+                    data: 'ad',
+                    orderable: false, className: 'align-middle' },
+                {
+                    data: 'fiyat',
+                    orderable: false,
+                    className: 'align-middle',
+                    render: function (data) {
+                        return data + ' ₺';
+                    },
+                },
+                {
+                    data: 'bilgi',
+                    orderable: false, className: 'align-middle wrap-text' },
+                {
+                    data: 'olusturmaTarihi',
+                    orderable: false,
+                    render: function (data) {
+                        return new Date(data).toLocaleDateString();
+                    },
+                    className: 'text-center align-middle '
+                }
+            ],
+            language: {
+                url: '/js/datatable.tr.json'
+            }
+        });
+
+        // urun secildiginde diziye atama islemleri
+        $('#productTable tbody').on('change', 'input[type="checkbox"]', function () {
+            var id = $(this).data("id");
+            var ad = $(this).data("ad");
+            var kod = $(this).data("kod");
+            var fiyat = $(this).data("fiyat");
+            if (this.checked) {
+                if (!selectedIds.includes(id)) {
+                    selectedIds.push(id);
+                    selectedProducts.push({
+                        id, ad, kod, fiyat
+                    })
+                }
+            } else {
+                selectedIds = selectedIds.filter(item => item !== id);
+                selectedProducts = selectedProducts.filter(item => item.id !== id);
+            }
+        });
+
+        // secili urunler degistiginde checkboxlari guncelle
+        $('#productTable').on('draw.dt', function () {
+
+            $('#productTable tbody tr input[type="checkbox"]').each(function () {
+                var checkbox = $(this);
+                var id = $(this).data('id');
+                if (selectedIds.includes(id)) {
+                    checkbox.prop('checked', true);
+                } else {
+                    checkbox.prop('checked', false);
+                }
+            });
+        });
+
+        // Resim degistiginde preview alanindakini de degistir
+        $('#Resim').on('change', function (event) {
+            var previewDiv = $('#imagePreview');
+            previewDiv.html('');
+
+            var file = event.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+
+                    $('#imagePreview').attr('src', e.target.result);
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Modal kapandiginda verileri temlzle
+        $('#productUpsertModal').on('hidden.bs.modal', function () {
+            $("#productId").val('');
+            $(this).find('form').trigger('reset');
+            $("#imagePreview").attr("src", "/images/defaultProductImage.png");
+        });
+
+    });
+
+
+
+
+
+
+
+  
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
